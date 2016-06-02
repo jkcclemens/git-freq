@@ -7,10 +7,7 @@
 extern crate time;
 use std::process::Command;
 use std::collections::BTreeMap;
-use time::strptime;
-use time::Tm;
-use time::Duration;
-use time::now;
+use time::{strptime, Tm, Duration, now};
 use std::env;
 
 const DATE_FORMAT: &'static str = "%Y-%m-%d";
@@ -22,6 +19,7 @@ struct Bounds {
 
 impl Bounds {
     fn add_to_command(&self, command: &mut Command) {
+        // If there was no lower_relative bound, ignore this
         if self.lower_relative.is_none() {
             return;
         }
@@ -31,6 +29,7 @@ impl Bounds {
         let after_tm_str = after_tm.strftime(DATE_FORMAT).unwrap();
         // Convert the cut-off point to a string
         let upper_str = self.upper.strftime(DATE_FORMAT).unwrap();
+        // Format the before and after arguments
         let after = format!("--after={}", if after_tm < self.upper { &after_tm_str } else { &upper_str });
         let before = format!("--before={}", if after_tm < self.upper { &upper_str } else { &after_tm_str });
         // Add the arguments
@@ -39,12 +38,19 @@ impl Bounds {
 
     fn filter_dates(&self, dates: Vec<&str>) -> Vec<Tm> {
         dates.iter()
+        // Filter out any empty lines
         .filter(|&it| it.len() > 0)
+        // Get the first space-delimited part
         .map(|it| it.split(" ").collect::<Vec<_>>()[0])
+        // Convert it to an optional Tm
         .map(|it| strptime(it, DATE_FORMAT))
+        // Only take successful conversions
         .filter(|&it| it.is_ok())
+        // Unwrap the guaranteed-okay Option<Tm>
         .map(|it| it.unwrap())
+        // Filter out any out-of-range dates
         .filter(|&it| self.lower_relative.is_none() || self.upper - it <= Duration::days(self.lower_relative.unwrap().abs()))
+        // Collect into a Vec<Tm>
         .collect::<Vec<_>>()
     }
 }
@@ -59,6 +65,7 @@ fn get_bounds() -> Bounds {
         bounds.upper = strptime(&args[1], DATE_FORMAT).unwrap_or_else(|e| panic!("invalid date in argument: {}", e));
         // Set the new number of days to add to the cut-off point to the second argument
         let mut days = args[2].parse::<i64>().unwrap_or_else(|e| panic!("invalid number in argument: {}", e));
+        // Move the days one towards zero.
         days += if days < 0 { 1 } else { -1 };
         bounds.lower_relative = Some(days);
     }
@@ -83,6 +90,7 @@ fn get_command_output(command: &mut Command) -> String {
     .output()
     .unwrap_or_else(|e| { panic!("failed to execute git: {}", e) })
     .stdout;
+    // Convert the raw output to a string
     String::from_utf8_lossy(&raw_output).into_owned()
 }
 
@@ -94,18 +102,24 @@ fn run_command(bounds: &Bounds) -> String {
 }
 
 fn fill_gaps(map: &BTreeMap<Tm, i32>) -> BTreeMap<Tm, i32> {
+    // Clone the original map
     let mut new_dates = map.clone();
+    // Get windows of two from the map
     for win in map.iter().collect::<Vec<_>>().windows(2) {
         let &one_date = win[0].0;
         let &two_date = win[1].0;
+        // Get the difference (in days) between the two dates
         let diff = (two_date.to_timespec() - one_date.to_timespec()).num_days();
+        // Only act if the difference is more than one day
         if diff <= 1 {
             continue;
         }
+        // Fill gaps between one and two with zero
         for i in 1..diff {
             new_dates.entry(one_date + Duration::days(i)).or_insert(0);
         }
     }
+    // Return the cloned, filled map
     new_dates
 }
 
@@ -124,8 +138,7 @@ fn get_frequencies() -> String {
     let mut dates_map: BTreeMap<Tm, i32> = BTreeMap::new();
     // Count the commits for each day
     for date in dates_list {
-        let count = dates_map.entry(date).or_insert(0);
-        *count += 1;
+        *dates_map.entry(date).or_insert(0) += 1;
     }
     // Add bounds if necessary
     if bounds.lower_relative.is_some() && dates_map.len() < bounds.lower_relative.unwrap().abs() as usize {

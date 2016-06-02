@@ -1,7 +1,12 @@
 [package]
 name = "git-freq"
-version = "1.0.0"
+version = "0.0.1"
 authors = ["Kyle Clemens <jkc.clemens@gmail.com>"]
+description = "Gets the frequency of commits in a git repository."
+repository = "https://github.com/jkcclemens/gitfreq"
+readme = "README.md"
+keywords = ["git"]
+license = "MPL-2.0"
 
 [dependencies]
 time = "0.1.35"

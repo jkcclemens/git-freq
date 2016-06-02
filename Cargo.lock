@@ -1,6 +1,6 @@
 [root]
 name = "git-freq"
-version = "1.0.0"
+version = "0.0.1"
 dependencies = [
  "time 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

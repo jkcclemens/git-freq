@@ -58,7 +58,9 @@ fn get_bounds() -> Bounds {
         // Set the new cut-off point to the first argument
         bounds.upper = strptime(&args[1], DATE_FORMAT).unwrap_or_else(|e| panic!("invalid date in argument: {}", e));
         // Set the new number of days to add to the cut-off point to the second argument
-        bounds.lower_relative = Some(args[2].parse::<i64>().unwrap_or_else(|e| panic!("invalid number in argument: {}", e)));
+        let mut days = args[2].parse::<i64>().unwrap_or_else(|e| panic!("invalid number in argument: {}", e));
+        days += if days < 0 { 1 } else { -1 };
+        bounds.lower_relative = Some(days);
     }
     bounds
 }
@@ -128,7 +130,7 @@ fn get_frequencies() -> String {
     // Add bounds if necessary
     if bounds.lower_relative.is_some() && dates_map.len() < bounds.lower_relative.unwrap().abs() as usize {
         dates_map.entry(bounds.upper).or_insert(0);
-        dates_map.entry(bounds.upper + Duration::days(bounds.lower_relative.unwrap() + if bounds.lower_relative.unwrap() < 0 { 1 } else { -1 })).or_insert(0);
+        dates_map.entry(bounds.upper + Duration::days(bounds.lower_relative.unwrap())).or_insert(0);
     }
     // Fill in the gaps with zeroes
     let new_dates = fill_gaps(&dates_map);

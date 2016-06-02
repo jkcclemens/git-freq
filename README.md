@@ -15,6 +15,11 @@ That creates a sparkline for the last seven days of activity in a git repo.
 ```sh
 git clone https://github.com/jkcclemens/gitfreq
 cd gitfreq
+```
+
+Now, you can **either** update your `PATH` and run `cargo install`, or you can do the following:
+
+```sh
 cargo build --release
 cd target/release
 strip git-freq # optional. usage varies by system

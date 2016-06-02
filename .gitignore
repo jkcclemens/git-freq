@@ -1,0 +1,21 @@
+# cargo
+/target
+
+# vim
+.*.sw[a-p]
+
+# various other potential build files
+target
+build
+bin
+dist
+package
+
+# Mac filesystem dust
+.DS_Store
+
+# intellij
+*.iml
+*.ipr
+*.iws
+.idea/

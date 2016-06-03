@@ -12,6 +12,14 @@ That creates a sparkline for the last seven days of activity in a git repo.
 
 ## Installation
 
+**crates.io version**
+
+```sh
+cargo install git-freq
+```
+
+**Cloned version**
+
 ```sh
 git clone https://github.com/jkcclemens/gitfreq
 cd gitfreq

@@ -5,7 +5,7 @@
  */
 
 extern crate time;
-use std::process::Command;
+use std::process::{Command, exit};
 use std::collections::BTreeMap;
 use time::{strptime, Tm, Duration, now};
 use std::env;
@@ -55,21 +55,21 @@ impl Bounds {
     }
 }
 
-fn get_bounds() -> Bounds {
+fn get_bounds() -> Result<Bounds, String> {
     let mut bounds = Bounds { upper: now(), lower_relative: None };
     // Collect the arguments passed to the process
     let args = env::args().collect::<Vec<_>>();
     // If there is more than one argument
     if args.len() > 2 {
         // Set the new cut-off point to the first argument
-        bounds.upper = strptime(&args[1], DATE_FORMAT).unwrap_or_else(|e| panic!("invalid date in argument: {}", e));
+        bounds.upper = try!(strptime(&args[1], DATE_FORMAT).map_err(|e| format!("invalid date in argument: {}", e)));
         // Set the new number of days to add to the cut-off point to the second argument
-        let mut days = args[2].parse::<i64>().unwrap_or_else(|e| panic!("invalid number in argument: {}", e));
+        let mut days = try!((&args[2]).parse::<i64>().map_err(|e| format!("invalid number in argument: {}", e)));
         // Move the days one towards zero.
         days += if days < 0 { 1 } else { -1 };
         bounds.lower_relative = Some(days);
     }
-    bounds
+    Ok(bounds)
 }
 
 fn get_command(bounds: &Bounds) -> Command {
@@ -84,17 +84,15 @@ fn get_command(bounds: &Bounds) -> Command {
     command
 }
 
-fn get_command_output(command: &mut Command) -> String {
+fn get_command_output(command: &mut Command) -> Result<String, String> {
     // Get the raw output of the command
-    let raw_output = command
-    .output()
-    .unwrap_or_else(|e| { panic!("failed to execute git: {}", e) })
+    let raw_output = try!(command.output().map_err(|e| format!("failed to execute git: {}", e)))
     .stdout;
     // Convert the raw output to a string
-    String::from_utf8_lossy(&raw_output).into_owned()
+    Ok(String::from_utf8_lossy(&raw_output).into_owned())
 }
 
-fn run_command(bounds: &Bounds) -> String {
+fn run_command(bounds: &Bounds) -> Result<String, String> {
     // Get the git command
     let mut command = get_command(&bounds);
     // Convert the raw output to a string
@@ -127,11 +125,12 @@ fn format_date_map(map: &BTreeMap<Tm, i32>) -> String {
     map.iter().map(|it| format!("{} ", it.1)).collect::<String>().trim().to_string()
 }
 
-fn get_frequencies() -> String {
+fn get_frequencies() -> Result<String, String> {
     // Get the bounds
-    let bounds = get_bounds();
+    let bounds: Bounds = try!(get_bounds());
+    // Check if bounds are valid
     // Run the git command
-    let output = run_command(&bounds);
+    let output = try!(run_command(&bounds));
     // Get a list of dates
     let dates_list = bounds.filter_dates(output.split("\n").collect());
     // Create a sorted map
@@ -148,10 +147,15 @@ fn get_frequencies() -> String {
     // Fill in the gaps with zeroes
     let new_dates = fill_gaps(&dates_map);
     // Join all the counts by spaces
-    format_date_map(&new_dates)
+    Ok(format_date_map(&new_dates))
 }
 
 fn main() {
+    let frequencies = get_frequencies();
+    if let Err(e) = frequencies {
+        println!("{}", e);
+        exit(1);
+    }
     // Print out the commit numbers
-    print!("{}", get_frequencies());
+    print!("{}", frequencies.unwrap());
 }
